@@ -91,7 +91,7 @@ ORDER BY `bargain`.`bargain_ID` ASC;
 List the customers with balance > 5000 by summing incoming transactions and deduct outgoing
 */
 
--- Get both international and local incmoing transactions for each customer
+-- Get both international and local incoming transactions for each customer
 WITH incoming AS (
 	SELECT client_account.*, bargain.bargain_ID, bargain.amount, currency_list.symbol, currency_list.alphabetic_code
     FROM client_account
@@ -110,7 +110,7 @@ WITH incoming AS (
     INNER JOIN currency_list ON currency_list.currency_ID = bargain.currency_ID
 
     -- Only incoming
-    WHERE bargain.bargain_ID IN ((SELECT bargain_ID FROM incoming_bargain))
+    WHERE bargain.bargain_ID IN (SELECT bargain_ID FROM incoming_bargain)
 
     -- Need to group because of join of "international_bargain", same bargains are duplicated
     GROUP BY bargain_ID 
@@ -209,16 +209,18 @@ final_table AS (
         -- USE ONLY FOR DEBUG PURPOSES
         -- all_bargains.income_amount, all_bargains.outgoing_amount,
         
+        -- If no income / outgoing transactions, replace NULL with 0
         COALESCE(all_bargains.income_amount, 0)-COALESCE(all_bargains.outgoing_amount, 0) AS total,
 
-        -- Customer might have only incoming or only outgoing transactions for specific currency
         all_bargains.symbol,
         all_bargains.alphabetic_code
 
     FROM all_bargains
 )
 
-SELECT * from final_table WHERE final_table.total > 5000;
+SELECT * from final_table 
+WHERE final_table.total > 5000
+ORDER BY account_number ASC;
 
 /*
 List the customers with balance > 5000 just from existing table
@@ -243,41 +245,118 @@ ORDER BY `client_account`.`account_number` ASC;
 Total oustandings of bank (sum(incoming) - sum(outgoing))
 */
 
--- Get all incoming transactions (summed by currency)
+-- Get both international and local incoming transactions
 WITH incoming AS (
-    SELECT SUM(bargain.amount) AS income_amount, currency_list.currency_ID, currency_list.symbol, currency_list.alphabetic_code
+	SELECT bargain.bargain_ID, bargain.amount, currency_list.symbol, currency_list.alphabetic_code
     FROM client_account
 
-    INNER JOIN account_iban ON client_account.account_number = account_iban.account_number
-    INNER JOIN local_bargain ON local_bargain.sender_account_number = client_account.account_number
-    INNER JOIN international_bargain ON international_bargain.sender_IBAN = account_iban.IBAN
-    INNER JOIN bargain ON bargain.bargain_ID = local_bargain.bargain_ID OR bargain.bargain_ID = international_bargain.bargain_ID
+    -- Get IBAN for international bargains
+    INNER JOIN account_iban ON account_iban.account_number = client_account.account_number
+
+    -- Get all transactions
+    INNER JOIN local_bargain ON local_bargain.receiver_account_number = client_account.account_number
+    INNER JOIN international_bargain ON international_bargain.receiver_IBAN = account_iban.IBAN
+
+    -- Do not care about status, as transactions being added only after it has been finished
+    INNER JOIN bargain ON (bargain.bargain_ID = local_bargain.bargain_ID OR bargain.bargain_ID = international_bargain.bargain_ID)
+
+    -- Get currency symbol and alphabetic code
     INNER JOIN currency_list ON currency_list.currency_ID = bargain.currency_ID
 
-    WHERE bargain.bargain_ID IN ((SELECT bargain_ID FROM incoming_bargain))
-    GROUP BY currency_list.currency_ID
+    -- Only incoming
+    WHERE bargain.bargain_ID IN (SELECT bargain_ID FROM incoming_bargain)
+
+    -- Need to group because of join of "international_bargain", same bargains are duplicated
+    GROUP BY bargain_ID 
 ),
 
--- Get all outgoing transactions (summed by currency)
+-- Sum all the incoming transactions by currency code (same as ID)
+summed_incoming AS (
+    SELECT SUM(incoming.amount) AS income_amount, incoming.symbol, incoming.alphabetic_code 
+    FROM incoming
+    GROUP BY incoming.alphabetic_code
+),
+
+-- Get both international and local outgoing transactions for each customer
 outgoing AS (
-    SELECT SUM(bargain.amount) AS outgoing_amount, currency_list.currency_ID, currency_list.symbol, currency_list.alphabetic_code
+    SELECT bargain.bargain_ID, bargain.amount, currency_list.symbol, currency_list.alphabetic_code
     FROM client_account
 
+    -- Get IBAN for international bargains
     INNER JOIN account_iban ON client_account.account_number = account_iban.account_number
+
+    -- Get all transactions
     INNER JOIN local_bargain ON local_bargain.sender_account_number = client_account.account_number
     INNER JOIN international_bargain ON international_bargain.sender_IBAN = account_iban.IBAN
-    INNER JOIN bargain ON bargain.bargain_ID = local_bargain.bargain_ID OR bargain.bargain_ID = international_bargain.bargain_ID
+
+    INNER JOIN bargain ON (bargain.bargain_ID = local_bargain.bargain_ID OR bargain.bargain_ID = international_bargain.bargain_ID)
+
+    -- Get currency symbol and alphabetic code
     INNER JOIN currency_list ON currency_list.currency_ID = bargain.currency_ID
 
-    WHERE bargain.bargain_ID IN ((SELECT bargain_ID FROM outgoing_bargain))
-    GROUP BY currency_list.currency_ID
+    -- All outgoing
+    WHERE bargain.bargain_ID IN (SELECT bargain_ID FROM outgoing_bargain)
+
+    -- Need to group because of join of "international_bargain", same bargains are duplicated
+    GROUP BY bargain_ID
+),
+
+-- Sum all the outgoing transactions by currency code (same as ID)
+summed_outgoing AS (
+    SELECT SUM(outgoing.amount) AS outgoing_amount, outgoing.symbol, outgoing.alphabetic_code
+    FROM outgoing
+    GROUP BY outgoing.alphabetic_code
+),
+
+-- Incoming + possible NULL outgoing bargains
+all_incoming AS (
+    SELECT 
+        summed_incoming.income_amount,
+        summed_outgoing.outgoing_amount,
+        summed_incoming.symbol,
+        summed_incoming.alphabetic_code
+
+    FROM summed_incoming
+    LEFT JOIN summed_outgoing ON summed_outgoing.alphabetic_code = summed_incoming.alphabetic_code
+),
+
+-- Outgoing + possible NULL incoming bargains
+all_outgoing AS (
+    SELECT
+        summed_incoming.income_amount,
+        summed_outgoing.outgoing_amount,
+        summed_outgoing.symbol,
+        summed_outgoing.alphabetic_code
+
+    FROM summed_outgoing
+    LEFT JOIN summed_incoming ON summed_incoming.alphabetic_code = summed_outgoing.alphabetic_code
+),
+
+/* Bank might have only outgoing / incoming bargains, and we need to check that 
+without prioritising any (by selecting from any specific table first and joining another) */
+
+all_bargains AS (
+    SELECT * FROM all_outgoing
+    UNION
+    SELECT * FROM all_incoming
+),
+
+-- Calculate difference for each currency
+final_table AS (
+    SELECT
+        -- USE ONLY FOR DEBUG PURPOSES
+        -- all_bargains.income_amount, all_bargains.outgoing_amount,
+        
+        -- If no income / outgoing transactions, replace NULL with 0
+        COALESCE(all_bargains.income_amount, 0)-COALESCE(all_bargains.outgoing_amount, 0) AS total,
+
+        all_bargains.symbol,
+        all_bargains.alphabetic_code
+
+    FROM all_bargains
 )
 
-SELECT incoming.income_amount-outgoing.outgoing_amount AS total, incoming.symbol, incoming.alphabetic_code
-FROM incoming
-
-INNER JOIN outgoing ON outgoing.currency_ID = incoming.currency_ID
-GROUP BY incoming.currency_ID
+SELECT * from final_table 
 
 /* #endregion */
 
@@ -293,8 +372,12 @@ SQL SECURITY INVOKER
 BEGIN
     SELECT client_details.*, client_account.account_number
     FROM `client_details`
+
     INNER JOIN client_account ON client_details.reference_number=client_account.reference_number 
-    WHERE client_account.account_number IN 
+    
+    WHERE client_account.account_number IN
+
+        -- Account number with loan within first 7 days of month
         (SELECT account_number from `account_loan` WHERE loan_ID IN 
             (SELECT loan_ID FROM `loan_payment` WHERE DAY(payment_due_date) BETWEEN 1 AND 7)
         );
@@ -319,15 +402,25 @@ BEGIN
     FROM client_details
 
     INNER JOIN client_account ON client_details.reference_number=client_account.reference_number
+
+    -- Get IBAN for international
     INNER JOIN account_iban ON client_account.account_number = account_iban.account_number
+    
+    -- Get all bargains
     INNER JOIN local_bargain ON local_bargain.sender_account_number = client_account.account_number
     INNER JOIN international_bargain ON international_bargain.sender_IBAN = account_iban.IBAN
+    
+    -- Filter outgoing by date and status
     INNER JOIN bargain ON ((bargain.bargain_ID = local_bargain.bargain_ID OR bargain.bargain_ID = international_bargain.bargain_ID) 
         AND bargain.bargain_status = "Succesful" 
         AND bargain_date BETWEEN NOW()-INTERVAL 5 DAY AND NOW())
+    
+    -- Get currencies
     INNER JOIN currency_list ON currency_list.currency_ID = bargain.currency_ID
 
-    WHERE bargain.bargain_ID IN ((SELECT bargain_ID FROM outgoing_bargain))
+    -- All outgoing
+    WHERE bargain.bargain_ID IN (SELECT bargain_ID FROM outgoing_bargain)
+    
     GROUP BY client_account.account_number, currency_list.currency_ID
     ORDER BY `bargain`.`bargain_ID` ASC;
 END;

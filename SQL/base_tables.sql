@@ -257,7 +257,7 @@ FROM client_account
 INNER JOIN account_loan ON client_account.account_number=account_loan.account_number
 INNER JOIN loan ON account_loan.loan_ID=loan.loan_ID;
 
--- View all transactions of clients
+-- View all transactions of clients (TODO: Fix bug, incorrect amount)
 CREATE OR REPLACE SQL SECURITY INVOKER VIEW view_transactions AS
 SELECT client_account.reference_number, client_account.account_number, account_IBAN.IBAN, bargain.amount, currency_list.alphabetic_code
 FROM client_account

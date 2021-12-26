@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS currency_list (
 CREATE TABLE IF NOT EXISTS account_balance (
     account_number BIGINT UNSIGNED NOT NULL,
     currency_ID TINYINT UNSIGNED NOT NULL,
-    amount FLOAT(2) NOT NULL,
+    amount DECIMAL(2) NOT NULL,
     PRIMARY KEY (account_number, currency_ID),
     FOREIGN KEY (account_number) REFERENCES account(account_number),
     FOREIGN KEY (currency_ID) REFERENCES currency_list(currency_ID)
@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS account_balance (
 
 CREATE TABLE IF NOT EXISTS loan (
     loan_ID INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    given_amount FLOAT(2) NOT NULL,
-    repaid_amount FLOAT(2) NOT NULL,
+    given_amount DECIMAL(2) NOT NULL,
+    repaid_amount DECIMAL(2) NOT NULL,
     currency_ID TINYINT UNSIGNED NOT NULL,
     FOREIGN KEY (currency_ID) REFERENCES currency_list(currency_ID)
 );
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS account_loan (
 
 CREATE TABLE IF NOT EXISTS bargain (
     bargain_ID INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    amount FLOAT(2) UNSIGNED NOT NULL,
+    amount DECIMAL(2) UNSIGNED NOT NULL,
     currency_ID TINYINT UNSIGNED NOT NULL,
     bargain_status ENUM ("Waiting for Date", "Pending","Failed", "Succesful") NOT NULL DEFAULT "Pending",
     bargain_date TIMESTAMP NOT NULL,
@@ -153,15 +153,15 @@ CREATE TABLE IF NOT EXISTS outgoing_bargain (
 CREATE TABLE IF NOT EXISTS stock (
     stock_code VARCHAR(5) NOT NULL PRIMARY KEY, -- AAPL
     stock_name VARCHAR(50) NOT NULL UNIQUE, -- Apple
-    sell_price FLOAT(2) UNSIGNED NOT NULL,
-    buy_price FLOAT(2) UNSIGNED NOT NULL,
+    sell_price DECIMAL(2) UNSIGNED NOT NULL,
+    buy_price DECIMAL(2) UNSIGNED NOT NULL,
     available_to_buy BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS account_stock (
     account_number BIGINT UNSIGNED NOT NULL,
     stock_code VARCHAR(5) NOT NULL,
-    shares FLOAT(8) UNSIGNED NOT NULL,
+    shares DECIMAL(8) UNSIGNED NOT NULL,
     PRIMARY KEY (account_number, stock_code),
     FOREIGN KEY (account_number) REFERENCES account(account_number),
     FOREIGN KEY (stock_code) REFERENCES stock(stock_code)
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS card_details (
 
 CREATE TABLE IF NOT EXISTS card_daily_limit (
     card_ID BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-    limit_amount FLOAT(2) NOT NULL,
+    limit_amount DECIMAL(2) NOT NULL,
     FOREIGN KEY (card_ID) REFERENCES card_details(card_ID)
 );
 
@@ -388,9 +388,13 @@ SET DEFAULT ROLE 'senior_developer' FOR 'admin_developer';
 -- Procedure which changes status of account to open
 
 DELIMITER //
-CREATE OR REPLACE PROCEDURE open_account(IN new_account_number BIGINT UNSIGNED)
+CREATE OR REPLACE PROCEDURE open_account(IN new_account_number BIGINT UNSIGNED, IN initial_balance BIGINT UNSIGNED)
 SQL SECURITY INVOKER
 BEGIN
+    -- Opening balance is minimum initial_balance
+    IF initial_balance < 50 RETURN;
+
+    -- Set account status to "OPEN"
     UPDATE banking_system.account
     SET account_status = "Open"
     WHERE account_number = new_account_number;
