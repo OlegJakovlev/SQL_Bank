@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS bargain (
     bargain_ID INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
     amount FLOAT(2) UNSIGNED NOT NULL,
     currency_ID TINYINT UNSIGNED NOT NULL,
-    bargain_status ENUM ("Waiting for Date", "Pending","Failed", "Succesful") NOT NULL DEFAULT "Pending",
+    bargain_status ENUM ("Waiting for Date", "Pending","Failed", "Succesful") NOT NULL DEFAULT "Waiting for Date",
     bargain_date DATETIME NOT NULL,
     bargain_description VARCHAR(255) NOT NULL,
     FOREIGN KEY (currency_ID) REFERENCES currency_list(currency_ID)
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS stock (
     stock_name VARCHAR(50) NOT NULL UNIQUE, -- Apple
     sell_price FLOAT(2) UNSIGNED NOT NULL,
     buy_price FLOAT(2) UNSIGNED NOT NULL,
-    available_to_buy BOOLEAN NOT NULL DEFAULT TRUE
+    available_to_buy BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS account_stock (
