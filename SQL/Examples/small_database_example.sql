@@ -25,23 +25,23 @@ INSERT INTO `currency_list` (`currency_ID`, `alphabetic_code`, `symbol`) VALUES
 (12, "CHF", "Fr"),
 (13, "SEK", "kr");
 
-INSERT INTO `stock` (`stock_code`, `stock_name`, `sell_price`, `buy_price`) VALUES
-("AAPL", "Apple", 8993.5188, 9177.06),
-("GOOG", "Google", 3989.7367999999997, 4071.16),
-("MSFT", "Microsoft", 267.4812, 272.94),
-("FB", "Facebook", 7397.334, 7548.3),
-("AMZN", "Amazon", 4552.149, 4645.05),
-("TWTR", "Twitter", 7319.8258, 7469.21),
-("NFLX", "Netflix", 730.198, 745.1),
-("TSLA", "Tesla", 5673.5434, 5789.33),
-("BABA", "Alibaba", 2957.4832, 3017.84),
-("NVDA", "Nvidia", 409.0912, 417.44),
-("AMD", "AMD", 261.30719999999997, 266.64),
-("INTC", "Intel", 5202.6142, 5308.79),
-("CSCO", "Cisco", 899.1598, 917.51),
-("ADBE", "Adobe", 8890.903, 9072.35),
-("ADP", "Autodesk", 8115.8014, 8281.43),
-("CMCSA", "Comcast", 6364.4042, 6494.29);
+INSERT INTO `stock` (`stock_code`, `stock_name`, `sell_price`, `buy_price`, `available_to_buy`) VALUES
+("AAPL", "Apple", 8993.52, 9177.06, 1),
+("GOOG", "Google", 3989.74, 4071.16, 1),
+("MSFT", "Microsoft", 267.48, 272.94, 1),
+("FB", "Facebook", 7397.33, 7548.3, 1),
+("AMZN", "Amazon", 4552.15, 4645.05, 1),
+("TWTR", "Twitter", 7319.83, 7469.21, 1),
+("NFLX", "Netflix", 730.20, 745.1, 1),
+("TSLA", "Tesla", 5673.54, 5789.33, 1),
+("BABA", "Alibaba", 2957.48, 3017.84, 1),
+("NVDA", "Nvidia", 409.09, 417.44, 1),
+("AMD", "AMD", 261.31, 266.64, 1),
+("INTC", "Intel", 5202.61, 5308.79, 1),
+("CSCO", "Cisco", 899.16, 917.51, 1),
+("ADBE", "Adobe", 8890.90, 9072.35, 1),
+("ADP", "Autodesk", 8115.80, 8281.43, 1),
+("CMCSA", "Comcast", 6364.40, 6494.29, 1);
 
 INSERT INTO `regional_information` (`regional_information_ID`, `country_name`, `postcode`, `city_name`) VALUES
 (1, "Serbia", "190021", "Anchorage"),

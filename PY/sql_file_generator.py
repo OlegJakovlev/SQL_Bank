@@ -36,7 +36,7 @@ stock_dict = get_all_stocks()
 for i in stock_dict:
     entry = stock_dict[i]
     initial_price = generate_price()
-    stocks.append('"' + i + '", "' + entry + '", ' + str(initial_price * (1 - STOCK_COMMISSION)) + ', ' + str(initial_price))
+    stocks.append('"' + i + '", "' + entry + '", ' + str(round(initial_price * (1 - STOCK_COMMISSION), 2)) + ', ' + str(initial_price) + ', 1')
 
 # Create regional info for customers
 regional_info = [ get_random_regional_information() for i in range(NUMBER_OF_CUSTOMER) ]
@@ -408,7 +408,7 @@ with open(OUTPUT_FILE_NAME, 'w', encoding="utf-8") as outfile:
     outfile.write(result + ";\n\n")
 
     # Write stock
-    outfile.write("INSERT INTO `stock` (`stock_code`, `stock_name`, `sell_price`, `buy_price`) VALUES\n")
+    outfile.write("INSERT INTO `stock` (`stock_code`, `stock_name`, `sell_price`, `buy_price`, `available_to_buy`) VALUES\n")
     result = ""
     for i in stocks:
         result += ( '(' + i + '),\n')
